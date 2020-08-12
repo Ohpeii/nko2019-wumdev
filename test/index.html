@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font: 13px Helvetica, Arial; }
+      form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+      form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+      form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+      #messages { list-style-type: none; margin: 0; padding: 0; }
+      #messages li { padding: 5px 10px; }
+      #messages li:nth-child(odd) { background: #eee; }
+      #messages { margin-bottom: 40px }
+    </style>
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <form>
+		<input class="in" id="m" autocomplete="off" /><button class="btn" type="submit">Send</button>
+	</form>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+  <script src="https://code.jquery.com/jquery-3.4.1.js" integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU=" crossorigin="anonymous"></script>
+	<script>
+    var username = getfield("Please enter your username");
+	while(username == '') username = getfield("Please enter your username");
+
+    var socket = io("http://localhost:3000");
+    var id;
+
+    let init = false
+    socket.on('connect', () => {
+      socket.emit("data", {
+        username
+      });
+
+      socket.on('err', e => {
+        let err = e.code;
+        switch(err) {
+          case 0:
+            username = getfield('Invalid username! Please re-enter your username!');
+            socket.emit("data", {
+              username
+            });
+            break;
+
+          case 1:
+            username = getfield('Username is already been used! Please enter another username!');
+            socket.emit("data", {
+              username
+            });
+            break;
+        };
+      })
+
+      socket.on("clientData", data => {
+        if (!init) {
+          id = data.id;
+          init = true;
+        }
+      });
+
+      const form = document.querySelector('form');
+
+      socket.on('userMessage', function (msg) {
+        $('#messages').append('<li>').text(`${msg.by} » ${msg.message} - - - - ${new Date(Date.now())}`);
+      });
+
+      socket.on('userJoin', u => {
+        $('#messages').append($('<li>')).text(`${u} joined - - - - ${new Date(Date.now())}`);
+      });
+
+      socket.on('userDisconnect', u => {
+        $('#messages').append($('<li>')).text(`${u} left - - - - ${new Date(Date.now())}`);
+      });
+
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        if ($('#m').val() == '') return;
+        socket.emit('message', $('#m').val());
+
+        $('#messages').append($('<li>')).text(`${username} » ${$('#m').val()} - - - - ${new Date(Date.now())}`);
+
+        $('#m').val('');
+        return;
+      });
+    })
+
+    function getfield(txt) {
+      return prompt(txt);
+    }
+    </script>
+  </body>
+</html>
